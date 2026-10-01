@@ -114,6 +114,7 @@
   function signOut() {
     state.isLoggedIn = false;
     state.user = null;
+    state.cart = [];
     state.currentModal = null;
     commit();
   }
@@ -143,7 +144,9 @@
   }
   function getCartTotal() { return getCartSubtotal() + getShipping(); }
 
+  /* Carts are tied to an account, so these refuse to mutate while signed out. */
   function addToCart(item) {
+    if (!state.isLoggedIn) { return null; }
     var entry = {
       id: item.id || uid('dc'),
       name: item.name || 'Untitled item',
@@ -194,6 +197,7 @@
   /* ---------------- orders ---------------- */
 
   function placeOrder(summary) {
+    if (!state.isLoggedIn) { return null; }
     var order = {
       id: 'DC-' + Math.floor(100000 + Math.random() * 899999),
       placedAt: new Date().toISOString(),

@@ -407,6 +407,50 @@ var initialized = false;
   }
 
   /* ---------------------------------------------------------
+     sign-in gate (carts and orders belong to an account)
+     --------------------------------------------------------- */
+
+  function currentPageName() {
+    var path = global.location.pathname.split('/').pop() || 'shop.html';
+    return path.replace(/[^a-zA-Z0-9_.\-]/g, '') || 'shop.html';
+  }
+
+  function goToSignIn() {
+    global.location.href = 'login.html?next=' + encodeURIComponent(currentPageName());
+  }
+
+  function requireSignIn(action) {
+    if (AppState.isNativeMode()) {
+      var go = global.confirm('Sign in to ' + action + '?\n\nYour cart is saved to your account, so ' +
+        'it stays empty until you sign in.');
+      if (go) {
+        goToSignIn();
+      } else {
+        global.alert('Sign in to ' + action + '. Your cart is saved to your account.');
+      }
+      return;
+    }
+
+    openModal({
+      id: 'signin-required',
+      tone: 'info',
+      icon: 'i',
+      kicker: 'Sign-in required',
+      title: 'Sign in to continue',
+      body: el('p', null, 'Your cart and orders are saved to your Drip Collectives account, so we need you to ' +
+        'sign in before you can ' + action + '. Anything already in your cart stays saved.'),
+      actions: [
+        { label: 'Not now', variant: 'outline', onClick: function () {
+          closeModal();
+          showAlert('info', 'No problem',
+            'Sign in whenever you are ready \u2014 your cart is waiting on your account.');
+        } },
+        { label: 'Sign in', variant: 'primary', onClick: goToSignIn }
+      ]
+    });
+  }
+
+  /* ---------------------------------------------------------
      password reveal toggle
      --------------------------------------------------------- */
 
@@ -682,6 +726,11 @@ var initialized = false;
   }
 
   function startCheckout() {
+    if (!AppState.isLoggedIn()) {
+      requireSignIn('place your order');
+      return;
+    }
+
     var cart = AppState.getCart();
     if (!cart.length) {
       warn('warn', 'Your cart is empty', 'Add at least one item from the shop before placing an order.');
@@ -738,6 +787,10 @@ var initialized = false;
 
   function completeOrder(summary) {
     var order = AppState.placeOrder(summary);
+    if (!order) {
+      requireSignIn('place your order');
+      return;
+    }
     closeModal();
 
     if (AppState.isNativeMode()) {
@@ -1002,14 +1055,18 @@ var initialized = false;
       cta.setAttribute('aria-label', 'Add ' + name + ' to cart');
       cta.addEventListener('click', function (event) {
         event.preventDefault();
-        AppState.addToCart({
+        if (!AppState.isLoggedIn()) {
+          requireSignIn('add "' + name + '" to your cart');
+          return;
+        }
+        var entry = AppState.addToCart({
           name: name,
           price: price,
           image: image ? image.getAttribute('src') : '',
           size: 'M',
           stock: 10
         });
-        notifyAdded(name);
+        if (entry) { notifyAdded(name); }
       });
     });
   }
@@ -1047,11 +1104,19 @@ var initialized = false;
         var cell = doc.createElement('td');
         cell.colSpan = 7;
         var empty = el('div', 'dc-empty');
-        empty.appendChild(el('h3', null, 'Your cart is empty'));
-        empty.appendChild(el('p', null, 'Add a few pieces from the shop to get started.'));
-        var link = el('a', 'btn btn-dark', 'Browse the shop');
-        link.href = 'shop.html';
-        empty.appendChild(link);
+        if (AppState.isLoggedIn()) {
+          empty.appendChild(el('h3', null, 'Your cart is empty'));
+          empty.appendChild(el('p', null, 'Add a few pieces from the shop to get started.'));
+          var link = el('a', 'btn btn-dark', 'Browse the shop');
+          link.href = 'shop.html';
+          empty.appendChild(link);
+        } else {
+          empty.appendChild(el('h3', null, 'Sign in to start shopping'));
+          empty.appendChild(el('p', null, 'Your cart is saved to your Drip Collectives account, so it stays empty until you sign in.'));
+          var signInLink = el('a', 'btn btn-dark', 'Sign in');
+          signInLink.href = 'login.html?next=cart.html';
+          empty.appendChild(signInLink);
+        }
         cell.appendChild(empty);
         row.appendChild(cell);
         body.appendChild(row);
@@ -1275,9 +1340,12 @@ var meta = el('div', 'dc-meta');
       signOut.type = 'button';
       signOut.style.marginTop = '16px';
       signOut.addEventListener('click', function () {
+        var hadItems = AppState.getCartCount() > 0;
         AppState.signOut();
         renderAccount();
-        showAlert('info', 'Signed out', 'You have been signed out of this device.');
+        showAlert('info', 'Signed out',
+          'You have been signed out of this device.' +
+          (hadItems ? ' Your cart was cleared because carts are saved per account.' : ''));
       });
       profileBody.appendChild(signOut);
 
