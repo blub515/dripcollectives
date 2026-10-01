@@ -624,6 +624,14 @@
   margin-top: 12px;
 }
 
+.dc-signout-hint {
+  background: none;
+  padding: 0;
+  margin-top: 8px;
+  color: var(--dc-ink);
+  font-weight: 600;
+}
+
 @media (max-width: 768px) {
   .dc-dialog__foot { flex-direction: column-reverse; }
   .dc-otp { gap: 6px; }

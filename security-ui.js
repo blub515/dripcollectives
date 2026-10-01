@@ -1336,10 +1336,44 @@ var meta = el('div', 'dc-meta');
       profileBody.appendChild(el('p', 'dc-help',
         'Try it: pick a file like notes.exe, script.js or run.sh to see the upload warning, then pick any .png or .jpg to see it accepted.'));
 
+      /* Two-step sign out: first click only arms the button, second click signs out.
+         No popup in either mode. */
       var signOut = el('button', 'btn btn-outline-dark', 'Sign out');
       signOut.type = 'button';
+      signOut.id = 'dcSignOut';
       signOut.style.marginTop = '16px';
+
+      var signOutHint = el('p', 'dc-help dc-signout-hint');
+      signOutHint.style.display = 'none';
+      var signOutArmed = false;
+      var signOutTimer = null;
+
+      function disarmSignOut() {
+        signOutArmed = false;
+        signOut.textContent = 'Sign out';
+        signOut.classList.remove('btn-danger');
+        signOut.classList.add('btn-outline-dark');
+        signOutHint.style.display = 'none';
+        if (signOutTimer) { global.clearTimeout(signOutTimer); signOutTimer = null; }
+      }
+
+      function armSignOut() {
+        signOutArmed = true;
+        signOut.textContent = 'Sure?';
+        signOut.classList.remove('btn-outline-dark');
+        signOut.classList.add('btn-danger');
+        signOutHint.textContent = 'Click again to sign out \u00b7 this resets in 4 seconds';
+        signOutHint.style.display = '';
+        if (signOutTimer) { global.clearTimeout(signOutTimer); }
+        signOutTimer = global.setTimeout(disarmSignOut, 4000);
+      }
+
       signOut.addEventListener('click', function () {
+        if (!signOutArmed) {
+          armSignOut();
+          return;
+        }
+        disarmSignOut();
         var hadItems = AppState.getCartCount() > 0;
         AppState.signOut();
         renderAccount();
@@ -1348,6 +1382,7 @@ var meta = el('div', 'dc-meta');
           (hadItems ? ' Your cart was cleared because carts are saved per account.' : ''));
       });
       profileBody.appendChild(signOut);
+      profileBody.appendChild(signOutHint);
 
       profile.appendChild(profileBody);
       profileCol.appendChild(profile);
