@@ -495,6 +495,35 @@
 .dc-switch input:checked + .dc-switch__track::before { transform: translateX(22px); }
 .dc-switch input:focus-visible + .dc-switch__track { box-shadow: 0 0 0 3px rgba(255, 255, 255, .35); }
 
+/* ---------- password reveal ---------- */
+
+.dc-password { position: relative; }
+
+.dc-password .form-control {
+  border-right: 0;
+  border-radius: var(--dc-radius) 0 0 var(--dc-radius);
+}
+
+.dc-password__toggle {
+  border-radius: 0 var(--dc-radius) var(--dc-radius) 0;
+  border-left: 0;
+  color: var(--dc-ink);
+  background: #fff;
+  border-color: #ced4da;
+  cursor: pointer;
+}
+
+.dc-password__toggle:hover,
+.dc-password__toggle:focus {
+  background: var(--dc-soft);
+  color: var(--dc-ink);
+}
+
+.dc-password__toggle:focus-visible {
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, .1);
+  outline: none;
+}
+
 /* ---------- account + cart page pieces ---------- */
 
 .dc-panel {

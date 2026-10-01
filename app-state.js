@@ -83,10 +83,10 @@
     }
   }
 
-  function publicUser(email) {
+  function publicUser(email, name) {
     return {
       email: email || DEMO_USER.email,
-      name: DEMO_USER.name,
+      name: name || DEMO_USER.name,
       handle: DEMO_USER.handle,
       joined: DEMO_USER.joined,
       signedInAt: new Date().toISOString()
@@ -104,9 +104,9 @@
       String(password || '') === DEMO_USER.password;
   }
 
-  function completeSignIn(email) {
+  function completeSignIn(email, name) {
     state.isLoggedIn = true;
-    state.user = publicUser(email);
+    state.user = publicUser(email, name);
     commit();
     return state.user;
   }

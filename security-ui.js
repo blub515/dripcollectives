@@ -406,7 +406,135 @@ var initialized = false;
     return wrap;
   }
 
-  function startSignInVerification(email) {
+  /* ---------------------------------------------------------
+     password reveal toggle
+     --------------------------------------------------------- */
+
+  var EYE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+  var EYE_SLASH_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle><line x1="3" y1="3" x2="21" y2="21"></line></svg>';
+
+  function enhancePasswordFields() {
+    queryAll('input[type="password"]').forEach(function (input) {
+      if (input.getAttribute('data-dc-toggle') === '1' || !input.parentNode) { return; }
+      input.setAttribute('data-dc-toggle', '1');
+
+      var wrapper = el('div', 'input-group dc-password');
+      input.parentNode.insertBefore(wrapper, input);
+      wrapper.appendChild(input);
+
+      var button = doc.createElement('button');
+      button.type = 'button';
+      button.className = 'btn btn-outline-secondary dc-password__toggle';
+      button.setAttribute('aria-label', 'Show password');
+      button.setAttribute('aria-pressed', 'false');
+      button.setAttribute('title', 'Show password');
+      button.innerHTML = EYE_ICON;
+
+      button.addEventListener('click', function () {
+        var hidden = input.type === 'password';
+        input.type = hidden ? 'text' : 'password';
+        button.innerHTML = hidden ? EYE_SLASH_ICON : EYE_ICON;
+        button.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password');
+        button.setAttribute('title', hidden ? 'Hide password' : 'Show password');
+        button.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+        input.focus();
+      });
+
+      wrapper.appendChild(button);
+    });
+  }
+
+  /* ---------------------------------------------------------
+     sign-in and registration
+     --------------------------------------------------------- */
+
+  function fieldValue(form, id) {
+    var field = query('#' + id, form);
+    return field && field.value ? field.value : '';
+  }
+
+  function authAlertsContainer(form) {
+    return query('#dcSignInAlerts', form) || query('#dcAuthAlerts', form);
+  }
+
+  function isStrongPassword(value) {
+    return /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(String(value || ''));
+  }
+
+  function handleAuthForm(form, isRegister) {
+    var container = authAlertsContainer(form);
+    clearAlerts(container);
+
+    var email = fieldValue(form, 'email').trim();
+    var password = fieldValue(form, 'password');
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      warn('danger', 'Enter a valid email address',
+        'We need a working email address before we can verify your identity.', { container: container });
+      return false;
+    }
+
+    if (isRegister) {
+      var name = fieldValue(form, 'fullName').trim();
+      var confirmPassword = fieldValue(form, 'confirmPassword');
+
+      if (name.length < 2) {
+        warn('danger', 'Enter your full name',
+          'Your delivery address needs a name to go with it.', { container: container });
+        return false;
+      }
+      if (!isStrongPassword(password)) {
+        warn('danger', 'Choose a stronger password',
+          'Use at least 8 characters and include both a letter and a number.', { container: container });
+        return false;
+      }
+      if (password !== confirmPassword) {
+        warn('danger', 'Passwords do not match',
+          'The confirmation password must be identical to the one you chose.', { container: container });
+        return false;
+      }
+      startSignInVerification(email, name);
+      return false;
+    }
+
+    if (!AppState.validateCredentials(email, password)) {
+      warn('danger', 'Sign-in failed',
+        'We could not match those details. Use the demo account: ' + AppState.DEMO_USER.email +
+        ' / ' + AppState.DEMO_USER.password, { container: container });
+      return false;
+    }
+    startSignInVerification(email);
+    return false;
+  }
+
+  function initAuthPages() {
+    queryAll('#loginForm, #registerForm').forEach(function (form) {
+      var isRegister = form.id === 'registerForm';
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        handleAuthForm(form, isRegister);
+      });
+    });
+
+    var fill = query('#dcFillDemo');
+    if (fill) {
+      fill.addEventListener('click', function () {
+        var form = query('#loginForm') || query('#registerForm');
+        if (!form) { return; }
+        var name = query('#fullName', form);
+        var email = query('#email', form);
+        var password = query('#password', form);
+        var confirm = query('#confirmPassword', form);
+        if (name && !name.value) { name.value = AppState.DEMO_USER.name; }
+        if (email) { email.value = AppState.DEMO_USER.email; }
+        if (password) { password.value = AppState.DEMO_USER.password; }
+        if (confirm) { confirm.value = AppState.DEMO_USER.password; }
+        if (email) { email.focus(); }
+      });
+    }
+  }
+
+  function startSignInVerification(email, profileName) {
     if (AppState.isNativeMode()) {
       global.alert('Unrecognized login attempt detected.\n\nWe\'ve sent a 6-digit verification code to ' + email + '.');
       var code = global.prompt('Enter the 6-digit verification code sent to ' + email + ':');
@@ -415,12 +543,13 @@ var initialized = false;
         global.alert('That code is not valid. Sign-in was cancelled.');
         return false;
       }
-      finishSignIn(email);
+      finishSignIn(email, profileName);
       return true;
     }
 
     var body = el('div');
     var intro = el('p', null,
+      (profileName ? 'Welcome, ' + profileName + '. ' : '') +
       'Unrecognized login attempt detected. We\u2019ve sent a 6-digit verification code to ' + email + '.');
     body.appendChild(intro);
 
@@ -453,7 +582,7 @@ var initialized = false;
           label: 'Verify & Proceed',
           variant: 'primary',
           disabled: true,
-          onClick: function () { finishSignIn(email); }
+          onClick: function () { finishSignIn(email, profileName); }
         }
       ],
       onMount: function (root) {
@@ -470,31 +599,14 @@ var initialized = false;
     return true;
   }
 
-  function finishSignIn(email) {
-    AppState.completeSignIn(email);
+  function finishSignIn(email, profileName) {
+    AppState.completeSignIn(email, profileName);
     closeModal();
     var params = new URLSearchParams(global.location.search);
     var next = params.get('next') || 'account.html';
     next = next.replace(/[^a-zA-Z0-9_.\-/]/g, '') || 'account.html';
     var joiner = next.indexOf('?') === -1 ? '?' : '&';
     global.location.href = next + joiner + 'welcome=1';
-  }
-
-  function handleSignInForm(form) {
-    var emailField = query('#email', form);
-    var passwordField = query('#password', form);
-    var email = (emailField && emailField.value) || '';
-    var password = (passwordField && passwordField.value) || '';
-
-    if (!AppState.validateCredentials(email, password)) {
-      warn('danger', 'Sign-in failed',
-        'We could not match those details. Use the demo account: ' + AppState.DEMO_USER.email +
-        ' / ' + AppState.DEMO_USER.password,
-        { container: query('#dcSignInAlerts') });
-      return false;
-    }
-    startSignInVerification(String(email).trim().toLowerCase());
-    return false;
   }
 
   /* ---------------------------------------------------------
@@ -710,6 +822,9 @@ var initialized = false;
     countdown.appendChild(value);
     countdown.appendChild(hint);
     body.appendChild(countdown);
+    body.appendChild(el('p', 'dc-help',
+      'Prototype build: this site has no backend, so this action clears the data stored in this browser only. ' +
+      'Nothing is removed from a server, no confirmation email is sent, and anyone can sign up again with the same address immediately.'));
 
     openModal({
       id: 'account-deletion',
@@ -897,31 +1012,6 @@ var initialized = false;
         notifyAdded(name);
       });
     });
-  }
-
-  /* ---------------------------------------------------------
-     login page
-     --------------------------------------------------------- */
-
-  function initLoginPage() {
-    var form = query('#loginForm') || query('#registerForm');
-    if (!form) { return; }
-
-    form.addEventListener('submit', function (event) {
-      event.preventDefault();
-      handleSignInForm(form);
-    });
-
-    var fill = query('#dcFillDemo');
-    if (fill) {
-      fill.addEventListener('click', function () {
-        var email = query('#email', form);
-        var password = query('#password', form);
-        if (email) { email.value = AppState.DEMO_USER.email; }
-        if (password) { password.value = AppState.DEMO_USER.password; }
-        if (email) { email.focus(); }
-      });
-    }
   }
 
   /* ---------------------------------------------------------
@@ -1249,7 +1339,7 @@ var meta = el('div', 'dc-meta');
 
     var params = new URLSearchParams(global.location.search);
     if (params.get('welcome') === '1' && AppState.isLoggedIn()) {
-      showAlert('success', 'Welcome back', 'Sign-in verified. You are now signed in as ' + AppState.getUser().email + '.');
+      showAlert('success', 'Welcome', 'Your session is active as ' + AppState.getUser().email + '.');
       params.delete('welcome');
       var queryString = params.toString();
       global.history.replaceState({}, '', global.location.pathname + (queryString ? '?' + queryString : ''));
@@ -1273,7 +1363,8 @@ var meta = el('div', 'dc-meta');
     });
 
     enhanceProductCards();
-    initLoginPage();
+    enhancePasswordFields();
+    initAuthPages();
     initCartPage();
     initAccountPage();
     renderNavbar();
@@ -1284,7 +1375,7 @@ var meta = el('div', 'dc-meta');
     closeModal: closeModal,
     showAlert: showAlert,
     signInVerification: startSignInVerification,
-    handleSignInForm: handleSignInForm,
+    handleSignInForm: handleAuthForm,
     placeOrder: startCheckout,
     deleteAccount: startAccountDeletion,
     bindUpload: bindUpload,
