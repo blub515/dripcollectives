@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cart - Drip Collectives</title>
+
+  <!-- Bootstrap & Fonts -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="security-ui.css">
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="index.html">
+      <img src="logo.png" alt="Drip Collectives Logo" height="40">
+    </a>
+
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+      <ul class="navbar-nav">
+        <li class="nav-item"><a class="nav-link text-black font-weight-bold" href="index.html">HOME</a></li>
+
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle text-black font-weight-bold" href="shop.html" data-toggle="dropdown">SHOP</a>
+          <div class="dropdown-menu">
+            <a class="dropdown-item" href="tops.html">Tops</a>
+            <a class="dropdown-item" href="bottoms.html">Bottoms</a>
+            <a class="dropdown-item" href="outerwear.html">Outerwear</a>
+            <a class="dropdown-item" href="accessories.html">Accessories</a>
+            <a class="dropdown-item" href="funda.html">FUNDA Collection</a>
+            <a class="dropdown-item" href="shop.html">All</a>
+          </div>
+        </li>
+
+        <li class="nav-item"><a class="nav-link text-black font-weight-bold" href="about.html">ABOUT</a></li>
+        <li class="nav-item"><a class="nav-link text-black font-weight-bold" href="contact.html">CONTACT</a></li>
+        <li class="nav-item"><a class="nav-link text-black font-weight-bold" href="sizechart.html">SIZE CHART</a></li>
+      </ul>
+    </div>
+
+    <div class="d-flex align-items-center">
+      <form class="form-inline mr-3" action="shop.html">
+        <input class="form-control form-control-sm" type="search" placeholder="Search">
+      </form>
+      <a href="cart.html" class="mr-3"><i class="fas fa-shopping-cart text-black"></i></a>
+      <a href="login.html" class="mr-3" id="user-icon"><i class="fas fa-user text-black"></i></a>
+    </div>
+  </div>
+</nav>
+
+<!-- CART SECTION -->
+<div class="container my-5 pt-5">
+  <h2 class="mb-4 text-center font-weight-bold">Your Shopping Cart</h2>
+
+  <div id="dcCartAlerts"></div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered text-center align-middle" id="dcCartTable">
+      <thead class="thead-dark">
+        <tr>
+          <th>Image</th>
+          <th>Product</th>
+          <th>Size</th>
+          <th>Price</th>
+          <th>Quantity</th>
+          <th>Subtotal</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="dcCartBody"></tbody>
+    </table>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-lg-7">
+      <div class="dc-panel">
+        <div class="dc-panel__head">Payment</div>
+        <div class="dc-panel__body">
+          <div class="form-group">
+            <label for="dcPaymentMethod">Payment method</label>
+            <select class="form-control" id="dcPaymentMethod">
+              <option>GCash</option>
+              <option>Maya</option>
+              <option>Cash on Delivery</option>
+            </select>
+          </div>
+          <label class="dc-dropzone">
+            <input type="file" id="dcPaymentProof" name="paymentProof">
+            <span class="dc-dropzone__title">Attach payment proof</span>
+            <span class="dc-dropzone__hint d-block">Screenshot of your GCash / Maya transfer &middot; only .png and .jpg are accepted</span>
+          </label>
+          <div id="dcProofAlerts"></div>
+          <p class="dc-help mb-0">
+            Touchpoint 4: attaching an unsupported file (for example <code>proof.exe</code> or <code>script.js</code>)
+            is blocked and explained in-page &mdash; no browser popup.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="dc-panel">
+        <div class="dc-panel__head">Order summary</div>
+        <div class="dc-panel__body">
+          <dl class="dc-summary mb-0">
+            <div class="dc-summary__row">
+              <dt>Items in cart</dt>
+              <dd id="dcCartCount">0</dd>
+            </div>
+            <div class="dc-summary__row">
+              <dt>Subtotal</dt>
+              <dd id="dcCartSubtotal">&#8369;0.00</dd>
+            </div>
+            <div class="dc-summary__row">
+              <dt>Shipping</dt>
+              <dd id="dcCartShipping">&#8369;0.00</dd>
+            </div>
+            <div class="dc-summary__row dc-summary__row--total">
+              <dt>Total</dt>
+              <dd id="dcCartTotal">&#8369;0.00</dd>
+            </div>
+          </dl>
+          <div class="d-flex flex-column" style="gap:10px;">
+            <button type="button" id="dcPlaceOrder" class="btn btn-dark">Place Order</button>
+            <button type="button" id="dcClearCart" class="btn btn-outline-dark">Clear cart</button>
+            <a href="shop.html" class="btn btn-outline-dark">Continue Shopping</a>
+          </div>
+          <p class="dc-help mb-0">
+            Touchpoint 2: <em>Place Order</em> never uses <code>alert()</code>/<code>confirm()</code> in the
+            redesigned mode &mdash; it opens a branded checkout security alert with the full order summary.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<footer class="custom-footer py-4">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-6">
+        <h5>Drip Collectives</h5>
+        <p>Founded in 2025, Drip Collectives was born from the energy of urban culture and the evolving world of street fashion. Our goal is to create timeless pieces that blend comfort, style, and individuality streetwear designed for everyone, from the daily grind to the late-night scene. More than just clothing, we represent a lifestyle that celebrates creativity, freedom, and self-expression.</p>
+      </div>
+      <div class="col-md-6 text-md-right">
+        <a href="about.html" class="text-white mr-3">About</a>
+        <a href="contact.html" class="text-white mr-3">Contact</a>
+        <a href="sizechart.html" class="text-white">Size Chart</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"></script>
+<script src="app-state.js"></script>
+<script src="security-ui.js"></script>
+
+</body>
+</html>
