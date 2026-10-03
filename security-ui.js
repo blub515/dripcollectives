@@ -869,7 +869,7 @@ var initialized = false;
     body.appendChild(checklist);
 
     var countdown = el('div', 'dc-countdown');
-    var value = el('span', 'dc-countdown__value', '3');
+    var value = el('span', 'dc-countdown__value', '10');
     var hint = el('span', null, 'second(s) before you can confirm.');
     countdown.appendChild(el('span', null, 'Confirmation unlocks in'));
     countdown.appendChild(value);
@@ -895,7 +895,7 @@ var initialized = false;
       ],
       onMount: function (root) {
         var confirmButton = root.querySelector('#dc-confirm-delete');
-        var remaining = 3;
+        var remaining = 10;
         var tick = global.setInterval(function () {
           remaining -= 1;
           if (remaining > 0) {
