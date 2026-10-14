@@ -457,7 +457,27 @@ var initialized = false;
   var EYE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
   var EYE_SLASH_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle><line x1="3" y1="3" x2="21" y2="21"></line></svg>';
 
+  function removePasswordToggles() {
+    queryAll('.dc-password').forEach(function (wrapper) {
+      var input = query('input', wrapper);
+      var button = query('.dc-password__toggle', wrapper);
+      if (button && button.parentNode) { button.parentNode.removeChild(button); }
+      if (input && wrapper.parentNode) {
+        input.setAttribute('type', 'password');
+        input.removeAttribute('data-dc-toggle');
+        wrapper.parentNode.insertBefore(input, wrapper);
+        wrapper.parentNode.removeChild(wrapper);
+      }
+    });
+  }
+
+  /* Eye toggle is a redesigned-mode affordance only. Original native popup
+     mode keeps plain masked password fields with no visibility control. */
   function enhancePasswordFields() {
+    if (AppState.isNativeMode()) {
+      removePasswordToggles();
+      return;
+    }
     queryAll('input[type="password"]').forEach(function (input) {
       if (input.getAttribute('data-dc-toggle') === '1' || !input.parentNode) { return; }
       input.setAttribute('data-dc-toggle', '1');
@@ -501,8 +521,53 @@ var initialized = false;
     return query('#dcSignInAlerts', form) || query('#dcAuthAlerts', form);
   }
 
+  var PASSWORD_RULES = [
+    { id: 'length', label: 'At least 8 characters', test: function (value) { return value.length >= 8; } },
+    { id: 'lower', label: '1 lowercase letter', test: function (value) { return /[a-z]/.test(value); } },
+    { id: 'upper', label: '1 uppercase letter', test: function (value) { return /[A-Z]/.test(value); } },
+    { id: 'number', label: '1 number', test: function (value) { return /\d/.test(value); } },
+    { id: 'special', label: '1 special character (!@#$%^&*)', test: function (value) { return /[!@#$%^&*]/.test(value); } }
+  ];
+
+  function passwordRuleResults(value) {
+    var password = String(value || '');
+    return PASSWORD_RULES.map(function (rule) {
+      return { id: rule.id, label: rule.label, ok: rule.test(password) };
+    });
+  }
+
   function isStrongPassword(value) {
-    return /^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(String(value || ''));
+    return passwordRuleResults(value).every(function (rule) { return rule.ok; });
+  }
+
+  /* Live password requirements checklist beneath the register password field.
+     Each rule's dot turns green as soon as the typed value satisfies it. */
+  function initPasswordChecklist() {
+    var list = query('#dcPasswordRules');
+    if (!list) { return; }
+    var input = query('#password');
+    if (!input) { return; }
+
+    list.classList.add('dc-pw-rules');
+    var items = {};
+    clearNode(list);
+    PASSWORD_RULES.forEach(function (rule) {
+      var row = el('li', 'dc-pw-rule');
+      row.setAttribute('data-rule', rule.id);
+      row.appendChild(el('span', 'dc-pw-rule__dot'));
+      row.appendChild(el('span', 'dc-pw-rule__label', rule.label));
+      items[rule.id] = row;
+      list.appendChild(row);
+    });
+
+    function refresh() {
+      passwordRuleResults(input.value).forEach(function (rule) {
+        items[rule.id].classList.toggle('is-valid', rule.ok);
+      });
+    }
+
+    input.addEventListener('input', refresh);
+    refresh();
   }
 
   function handleAuthForm(form, isRegister) {
@@ -519,7 +584,7 @@ var initialized = false;
     }
 
     if (isRegister) {
-      var name = fieldValue(form, 'fullName').trim();
+      var name = (fieldValue(form, 'firstName') + ' ' + fieldValue(form, 'lastName')).trim();
       var confirmPassword = fieldValue(form, 'confirmPassword');
 
       if (name.length < 2) {
@@ -529,7 +594,8 @@ var initialized = false;
       }
       if (!isStrongPassword(password)) {
         warn('danger', 'Choose a stronger password',
-          'Use at least 8 characters and include both a letter and a number.', { container: container });
+          'Your password must meet all 5 requirements: at least 8 characters, 1 lowercase letter, ' +
+          '1 uppercase letter, 1 number and 1 special character (!@#$%^&*).', { container: container });
         return false;
       }
       if (password !== confirmPassword) {
@@ -551,6 +617,59 @@ var initialized = false;
     return false;
   }
 
+  /* In-page legal modals (Terms of Service + Privacy Policy) for register.html.
+     Clicking either link opens an overlay instead of navigating away. */
+  var LEGAL_CONTENT = {
+    terms: {
+      title: 'Terms of Service',
+      body:
+        '<p><strong>Terms of Service</strong></p>' +
+        '<p><em>Effective Date: September 2026</em></p>' +
+        '<p>1. <strong>Account Registration:</strong> You are responsible for maintaining the security of your account credentials and for all activities conducted under your account.</p>' +
+        '<p>2. <strong>Acceptable Use:</strong> You agree not to use this website for unlawful purposes, attempt unauthorized access to our systems, or disrupt platform security.</p>' +
+        '<p>3. <strong>Intellectual Property:</strong> All content, logos, and designs on this site are owned by Drip Collectives and protected by trademark and copyright laws.</p>' +
+        '<p>4. <strong>Account Termination:</strong> We reserve the right to suspend or terminate accounts that violate our usage terms or engage in fraudulent activity.</p>'
+    },
+    privacy: {
+      title: 'Privacy Policy',
+      body:
+        '<p><strong>Privacy Policy</strong></p>' +
+        '<p><em>Effective Date: September 2026</em></p>' +
+        '<p>1. <strong>Data We Collect:</strong> We collect your name and email address during account creation to establish your account identity.</p>' +
+        '<p>2. <strong>How We Use Information:</strong> Your details are strictly used to process orders, manage your account, send security notices, and offer customer support.</p>' +
+        '<p>3. <strong>Data Sharing &amp; Protection:</strong> We do not sell or trade your personal data to third parties. We apply standard security protocols to safeguard your credentials.</p>' +
+        '<p>4. <strong>Your Rights:</strong> You have the right to request access to, correction of, or deletion of your personal data at any time through our contact page.</p>'
+    }
+  };
+
+  function openLegalModal(kind) {
+    var docData = LEGAL_CONTENT[kind];
+    if (!docData) { return; }
+    openModal({
+      id: 'legal-' + kind,
+      tone: 'info',
+      icon: '\u00a7',
+      kicker: 'Legal',
+      title: docData.title,
+      body: docData.body,
+      wide: true,
+      actions: [
+        { label: 'Close', variant: 'primary', onClick: function () { closeModal(); } }
+      ]
+    });
+  }
+
+  function initLegalLinks() {
+    queryAll('[data-legal]').forEach(function (link) {
+      if (link.getAttribute('data-dc-legal') === '1') { return; }
+      link.setAttribute('data-dc-legal', '1');
+      link.addEventListener('click', function (event) {
+        event.preventDefault();
+        openLegalModal(link.getAttribute('data-legal'));
+      });
+    });
+  }
+
   function initAuthPages() {
     queryAll('#loginForm, #registerForm').forEach(function (form) {
       var isRegister = form.id === 'registerForm';
@@ -560,25 +679,67 @@ var initialized = false;
       });
     });
 
+    initPasswordChecklist();
+    initLegalLinks();
+
+    var google = query('#dcGoogleSignIn');
+    if (google && !google.getAttribute('data-dc-bound')) {
+      google.setAttribute('data-dc-bound', '1');
+      google.addEventListener('click', function () {
+        warn('info', 'Google sign-in',
+          'Google sign-in is not wired up in this prototype. Use the demo account to continue.',
+          { container: query('#dcAuthAlerts') });
+      });
+    }
+
     var fill = query('#dcFillDemo');
     if (fill) {
       fill.addEventListener('click', function () {
         var form = query('#loginForm') || query('#registerForm');
         if (!form) { return; }
-        var name = query('#fullName', form);
+        var firstName = query('#firstName', form);
+        var lastName = query('#lastName', form);
         var email = query('#email', form);
         var password = query('#password', form);
         var confirm = query('#confirmPassword', form);
-        if (name && !name.value) { name.value = AppState.DEMO_USER.name; }
+        if (firstName && !firstName.value) { firstName.value = AppState.DEMO_USER.name.split(' ')[0]; }
+        if (lastName && !lastName.value) { lastName.value = AppState.DEMO_USER.name.split(' ').slice(1).join(' '); }
         if (email) { email.value = AppState.DEMO_USER.email; }
-        if (password) { password.value = AppState.DEMO_USER.password; }
+        if (password) {
+          password.value = AppState.DEMO_USER.password;
+          password.dispatchEvent(new Event('input', { bubbles: true }));
+        }
         if (confirm) { confirm.value = AppState.DEMO_USER.password; }
         if (email) { email.focus(); }
       });
     }
   }
 
+  /* "Trust this browser" remembers a browser via localStorage so future
+     logins on this device skip the 6-digit OTP prompt entirely. */
+  var TRUSTED_BROWSER_KEY = 'drip.collectives.trusted.browser';
+
+  function markBrowserTrusted() {
+    try {
+      var token = 'tb-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+      global.localStorage.setItem(TRUSTED_BROWSER_KEY, token);
+    } catch (err) { /* private mode - trust simply won't persist */ }
+  }
+
+  function isBrowserTrusted() {
+    try {
+      return !!global.localStorage.getItem(TRUSTED_BROWSER_KEY);
+    } catch (err) {
+      return false;
+    }
+  }
+
   function startSignInVerification(email, profileName) {
+    if (isBrowserTrusted()) {
+      finishSignIn(email, profileName);
+      return true;
+    }
+
     if (AppState.isNativeMode()) {
       global.alert('Unrecognized login attempt detected.\n\nWe\'ve sent a 6-digit verification code to ' + email + '.');
       var code = global.prompt('Enter the 6-digit verification code sent to ' + email + ':');
@@ -605,6 +766,16 @@ var initialized = false;
     hint.appendChild(code);
     hint.appendChild(doc.createTextNode(') to continue.'));
 
+    var trustLabel = el('label', 'dc-trust-browser');
+    trustLabel.setAttribute('for', 'dcTrustBrowser');
+    var trustBox = doc.createElement('input');
+    trustBox.type = 'checkbox';
+    trustBox.id = 'dcTrustBrowser';
+    trustLabel.appendChild(trustBox);
+    trustLabel.appendChild(doc.createTextNode(' Trust this browser'));
+    body.appendChild(trustLabel);
+    body.appendChild(el('p', 'dc-hint', 'Skips the verification code on this device for future sign-ins.'));
+
     openModal({
       id: 'signin-verification',
       tone: 'warn',
@@ -626,7 +797,10 @@ var initialized = false;
           label: 'Verify & Proceed',
           variant: 'primary',
           disabled: true,
-          onClick: function () { finishSignIn(email, profileName); }
+          onClick: function () {
+            if (trustBox.checked) { markBrowserTrusted(); }
+            finishSignIn(email, profileName);
+          }
         }
       ],
       onMount: function (root) {
@@ -844,58 +1018,38 @@ var initialized = false;
 
     if (AppState.isNativeMode()) {
       var confirmed = global.confirm(
-        'Permanently delete the account ' + email + '?\n\n' +
-        'This removes your saved details, order history and empties your cart. This cannot be undone.'
+        'Delete the account ' + email + '?'
       );
       if (confirmed) {
         performAccountDeletion();
-      } else {
-        global.alert('Account deletion cancelled. Nothing was changed.');
       }
       return;
     }
 
     var body = el('div');
-    body.appendChild(el('p', null,
-      'You are about to permanently delete the account ' + email + '. This is a security-critical action and cannot be undone.'));
-
-    var checklist = el('ul', 'dc-checklist');
-    ['Your saved address and payment preferences are erased',
-      'Order history for this account is removed',
-      'Your cart is emptied and any pending payment proof is discarded',
-      'The email address can be reused for a new account'].forEach(function (line) {
-      checklist.appendChild(el('li', null, line));
-    });
-    body.appendChild(checklist);
-
     var countdown = el('div', 'dc-countdown');
-    var value = el('span', 'dc-countdown__value', '10');
+    var value = el('span', 'dc-countdown__value', '8');
     var hint = el('span', null, 'second(s) before you can confirm.');
     countdown.appendChild(el('span', null, 'Confirmation unlocks in'));
     countdown.appendChild(value);
     countdown.appendChild(hint);
     body.appendChild(countdown);
-    body.appendChild(el('p', 'dc-help',
-      'Prototype build: this site has no backend, so this action clears the data stored in this browser only. ' +
-      'Nothing is removed from a server, no confirmation email is sent, and anyone can sign up again with the same address immediately.'));
+
 
     openModal({
       id: 'account-deletion',
       tone: 'danger',
-      icon: '!',
-      kicker: 'Account deletion warning',
-      title: 'Delete your account?',
+      title: 'Delete account?',
       body: body,
       actions: [
-        { label: 'Keep my account', variant: 'outline', onClick: function () {
+        { label: 'Cancel', variant: 'outline', onClick: function () {
           closeModal();
-          showAlert('info', 'Nothing was deleted', 'Your account is safe and still active.');
         } },
-        { id: 'dc-confirm-delete', label: 'Permanently Delete', variant: 'danger', disabled: true, onClick: performAccountDeletion }
+        { id: 'dc-confirm-delete', label: 'Delete', variant: 'danger', disabled: true, onClick: performAccountDeletion }
       ],
       onMount: function (root) {
         var confirmButton = root.querySelector('#dc-confirm-delete');
-        var remaining = 10;
+        var remaining = 8;
         var tick = global.setInterval(function () {
           remaining -= 1;
           if (remaining > 0) {
@@ -917,14 +1071,11 @@ var initialized = false;
   function performAccountDeletion() {
     AppState.deleteAccount();
     if (AppState.isNativeMode()) {
-      global.alert('Your account has been deleted.');
       global.location.href = 'index.html';
       return;
     }
     closeModal();
-    showAlert('success', 'Account deleted',
-      'Your session was cleared and your cart was emptied. Taking you back to the home page.');
-    registerTimer(global.setTimeout(function () { global.location.href = 'index.html'; }, 1400));
+    global.location.href = 'index.html';
   }
 
   /* ---------------------------------------------------------
@@ -1027,13 +1178,18 @@ var initialized = false;
       global.alert('Added to cart: ' + name + '\n\nItems in cart: ' + AppState.getCartCount());
       return;
     }
-    var node = showAlert('success', 'Added to bag', name + ' \u2014 ' + AppState.getCartCount() + ' item(s) in your cart.', {
+    var count = AppState.getCartCount();
+    var node = showAlert('success', 'Added to bag', name + ' \u2014 ' + count + ' item(s) in your cart.', {
       timeout: 5000
     });
     var link = el('a', 'dc-toast-link', 'View cart');
     link.href = 'cart.html';
-    link.style.marginLeft = '10px';
-    node.querySelector('.dc-alert__text').appendChild(link);
+    var badge = el('span', 'dc-toast-count', String(count));
+    badge.setAttribute('aria-label', count + ' item(s) in cart');
+    var actions = el('span', 'dc-toast-actions');
+    actions.appendChild(link);
+    actions.appendChild(badge);
+    node.querySelector('.dc-alert__text').appendChild(actions);
   }
 
   function enhanceProductCards() {
@@ -1336,8 +1492,8 @@ var meta = el('div', 'dc-meta');
       profileBody.appendChild(el('p', 'dc-help',
         'Try it: pick a file like notes.exe, script.js or run.sh to see the upload warning, then pick any .png or .jpg to see it accepted.'));
 
-      /* Two-step sign out: first click only arms the button, second click signs out.
-         No popup in either mode. */
+      /* Two-step sign out ("Sure?" + 4s reset) is a redesigned-mode feature.
+         Original native mode signs out instantly on the first click. */
       var signOut = el('button', 'btn btn-outline-dark', 'Sign out');
       signOut.type = 'button';
       signOut.id = 'dcSignOut';
@@ -1368,18 +1524,27 @@ var meta = el('div', 'dc-meta');
         signOutTimer = global.setTimeout(disarmSignOut, 4000);
       }
 
+      function completeSignOut() {
+        var hadItems = AppState.getCartCount() > 0;
+        AppState.signOut();
+        renderAccount();
+        if (AppState.isNativeMode()) { return; }
+        showAlert('info', 'Signed out',
+          'You have been signed out of this device.' +
+          (hadItems ? ' Your cart was cleared because carts are saved per account.' : ''));
+      }
+
       signOut.addEventListener('click', function () {
+        if (AppState.isNativeMode()) {
+          completeSignOut();
+          return;
+        }
         if (!signOutArmed) {
           armSignOut();
           return;
         }
         disarmSignOut();
-        var hadItems = AppState.getCartCount() > 0;
-        AppState.signOut();
-        renderAccount();
-        showAlert('info', 'Signed out',
-          'You have been signed out of this device.' +
-          (hadItems ? ' Your cart was cleared because carts are saved per account.' : ''));
+        completeSignOut();
       });
       profileBody.appendChild(signOut);
       profileBody.appendChild(signOutHint);
@@ -1462,6 +1627,7 @@ var meta = el('div', 'dc-meta');
     AppState.subscribe(function () {
       renderModeSwitch();
       syncUploadAccept();
+      enhancePasswordFields();
       renderNavbar();
     });
 

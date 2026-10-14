@@ -615,6 +615,128 @@
 
 .dc-toast-link { color: #0a5231; font-weight: 700; }
 
+/* ---------- cart toast actions row (View cart + count pill) ---------- */
+
+.dc-toast-actions {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+}
+
+.dc-toast-actions .dc-toast-link { margin-right: 10px; }
+
+.dc-toast-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--dc-ink);
+  color: #fff;
+  font-size: .74rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ---------- trust this browser (OTP modal) ---------- */
+
+.dc-trust-browser {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  font-size: .88rem;
+  color: #3c3c46;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dc-trust-browser input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--dc-ink);
+  cursor: pointer;
+}
+
+/* ---------- registration: OR divider ---------- */
+
+.dc-or-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 18px;
+  color: var(--dc-muted);
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+
+.dc-or-divider::before,
+.dc-or-divider::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--dc-line);
+}
+
+/* ---------- registration: live password requirements ---------- */
+
+.dc-pw-rules {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.dc-pw-rule {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: .82rem;
+  line-height: 1.4;
+  color: var(--dc-muted);
+  transition: color .15s ease;
+}
+
+.dc-pw-rule__dot {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--dc-muted);
+  background: transparent;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.dc-pw-rule.is-valid { color: var(--dc-success); }
+
+.dc-pw-rule.is-valid .dc-pw-rule__dot {
+  background: var(--dc-success);
+  border-color: var(--dc-success);
+}
+
+/* ---------- registration: legal links in agreement label ---------- */
+
+.dc-legal-link {
+  color: var(--dc-ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: inherit;
+}
+
+.dc-legal-link:hover,
+.dc-legal-link:focus { color: var(--dc-muted); }
+
 .dc-help {
   font-size: .78rem;
   color: var(--dc-muted);
