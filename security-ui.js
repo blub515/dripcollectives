@@ -1180,6 +1180,9 @@ var initialized = false;
   function renderNavbar() {
     var count = AppState.getCartCount();
     queryAll('a[href="cart.html"]').forEach(function (link) {
+      /* Toast "View cart" links carry their own single count pill;
+         only the real navbar/cart-page links get the cart badge. */
+      if (link.closest('.dc-alert-stack')) { return; }
       var badge = query('.dc-cart-badge', link);
       if (!badge) {
         badge = el('span', 'dc-cart-badge badge badge-dark');
