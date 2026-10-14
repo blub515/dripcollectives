@@ -178,6 +178,9 @@ var initialized = false;
     modeSwitchInput.checked = native;
     modeSwitch.classList.toggle('is-native', native);
     modeSwitchValue.textContent = native ? 'Original Native Popups' : 'Redesigned In-Page Warnings';
+    doc.body.classList.toggle('mode-original', native);
+    doc.body.classList.toggle('mode-redesigned', !native);
+    syncPasswordChecklist();
   }
 
   function handleDialogKeys(event) {
@@ -541,31 +544,51 @@ var initialized = false;
   }
 
   /* Live password requirements checklist beneath the register password field.
-     Each rule's dot turns green as soon as the typed value satisfies it. */
+     Each rule's dot turns green as soon as the typed value satisfies it.
+     Built once, but the input listener only runs in redesigned mode - the
+     checklist is hidden and inert in original native mode. */
+  var pwChecklistBinding = null;
+
   function initPasswordChecklist() {
     var list = query('#dcPasswordRules');
     if (!list) { return; }
     var input = query('#password');
     if (!input) { return; }
 
-    list.classList.add('dc-pw-rules');
-    var items = {};
-    clearNode(list);
-    PASSWORD_RULES.forEach(function (rule) {
-      var row = el('li', 'dc-pw-rule');
-      row.setAttribute('data-rule', rule.id);
-      row.appendChild(el('span', 'dc-pw-rule__dot'));
-      row.appendChild(el('span', 'dc-pw-rule__label', rule.label));
-      items[rule.id] = row;
-      list.appendChild(row);
-    });
-
-    function refresh() {
-      passwordRuleResults(input.value).forEach(function (rule) {
-        items[rule.id].classList.toggle('is-valid', rule.ok);
+    if (list.getAttribute('data-dc-built') !== '1') {
+      list.classList.add('dc-pw-rules');
+      var items = {};
+      clearNode(list);
+      PASSWORD_RULES.forEach(function (rule) {
+        var row = el('li', 'dc-pw-rule');
+        row.setAttribute('data-rule', rule.id);
+        row.appendChild(el('span', 'dc-pw-rule__dot'));
+        row.appendChild(el('span', 'dc-pw-rule__label', rule.label));
+        items[rule.id] = row;
+        list.appendChild(row);
       });
+
+      var refresh = function () {
+        passwordRuleResults(input.value).forEach(function (rule) {
+          items[rule.id].classList.toggle('is-valid', rule.ok);
+        });
+      };
+
+      list.setAttribute('data-dc-built', '1');
+      pwChecklistBinding = { input: input, refresh: refresh };
     }
 
+    syncPasswordChecklist();
+  }
+
+  /* Turns the live validation listener on (redesigned) or off (original)
+     whenever the demo mode switch flips. Safe to call repeatedly. */
+  function syncPasswordChecklist() {
+    if (!pwChecklistBinding) { return; }
+    var input = pwChecklistBinding.input;
+    var refresh = pwChecklistBinding.refresh;
+    input.removeEventListener('input', refresh);
+    if (AppState.isNativeMode()) { return; }
     input.addEventListener('input', refresh);
     refresh();
   }
@@ -665,6 +688,9 @@ var initialized = false;
       link.setAttribute('data-dc-legal', '1');
       link.addEventListener('click', function (event) {
         event.preventDefault();
+        /* In-page legal modals are a redesigned-mode enhancement only;
+           original mode keeps the agreement label as plain text. */
+        if (AppState.isNativeMode()) { return; }
         openLegalModal(link.getAttribute('data-legal'));
       });
     });

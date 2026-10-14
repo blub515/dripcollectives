@@ -737,6 +737,26 @@
 .dc-legal-link:hover,
 .dc-legal-link:focus { color: var(--dc-muted); }
 
+/* ---------- mode-gated registration enhancements ---------- */
+
+/* Figma extras are hidden by default so original mode (and no-JS) stays
+   plain; body.mode-redesigned reveals them and JS enables the listeners. */
+.dc-signup-google,
+.dc-or-divider,
+.dc-pw-rules { display: none; }
+
+body.mode-redesigned .dc-signup-google { display: inline-block; }
+body.mode-redesigned .dc-or-divider { display: flex; }
+body.mode-redesigned .dc-pw-rules { display: block; }
+
+/* Original mode renders the agreement links as ordinary plain text. */
+body.mode-original .dc-legal-link {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+  pointer-events: none;
+}
+
 .dc-help {
   font-size: .78rem;
   color: var(--dc-muted);
