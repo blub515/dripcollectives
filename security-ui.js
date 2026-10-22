@@ -1053,6 +1053,18 @@ var initialized = false;
     }
 
     var body = el('div');
+    body.appendChild(el('p', null,
+      'You are about to permanently delete the account ' + email + '. This is a security-critical action and cannot be undone.'));
+
+    var checklist = el('ul', 'dc-checklist');
+    ['Your saved address and payment preferences are erased',
+      'Order history for this account is removed',
+      'Your cart is emptied and any pending payment proof is discarded',
+      'The email address can be reused for a new account'].forEach(function (line) {
+      checklist.appendChild(el('li', null, line));
+    });
+    body.appendChild(checklist);
+
     var countdown = el('div', 'dc-countdown');
     var value = el('span', 'dc-countdown__value', '8');
     var hint = el('span', null, 'second(s) before you can confirm.');
@@ -1060,18 +1072,23 @@ var initialized = false;
     countdown.appendChild(value);
     countdown.appendChild(hint);
     body.appendChild(countdown);
-
+    body.appendChild(el('p', 'dc-help',
+      'Prototype build: this site has no backend, so this action clears the data stored in this browser only. ' +
+      'Nothing is removed from a server, no confirmation email is sent, and anyone can sign up again with the same address immediately.'));
 
     openModal({
       id: 'account-deletion',
       tone: 'danger',
-      title: 'Delete account?',
+      icon: '!',
+      kicker: 'Account deletion warning',
+      title: 'Delete your account?',
       body: body,
       actions: [
-        { label: 'Cancel', variant: 'outline', onClick: function () {
+        { label: 'Keep my account', variant: 'outline', onClick: function () {
           closeModal();
+          showAlert('info', 'Nothing was deleted', 'Your account is safe and still active.');
         } },
-        { id: 'dc-confirm-delete', label: 'Delete', variant: 'danger', disabled: true, onClick: performAccountDeletion }
+        { id: 'dc-confirm-delete', label: 'Permanently Delete', variant: 'danger', disabled: true, onClick: performAccountDeletion }
       ],
       onMount: function (root) {
         var confirmButton = root.querySelector('#dc-confirm-delete');
