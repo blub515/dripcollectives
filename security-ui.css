@@ -756,6 +756,17 @@ body.mode-original .dc-legal-link {
   pointer-events: none;
 }
 
+/* Inline warning under the terms checkbox; created and toggled by JS,
+   redesigned mode only (native mode uses alert() instead). */
+.dc-terms-warning {
+  display: none;
+  color: var(--dc-danger);
+  font-size: .8rem;
+  margin: 6px 0 0;
+  line-height: 1.4;
+}
+.dc-terms-warning.is-visible { display: block; }
+
 .dc-help {
   font-size: .78rem;
   color: var(--dc-muted);

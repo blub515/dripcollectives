@@ -626,6 +626,16 @@ var initialized = false;
           'The confirmation password must be identical to the one you chose.', { container: container });
         return false;
       }
+      var terms = query('#terms', form);
+      if (terms && !terms.checked) {
+        if (AppState.isNativeMode()) {
+          global.alert('Please agree to the Terms of Service and Privacy Policy before creating your account.');
+        } else {
+          showTermsWarning(form);
+          terms.focus();
+        }
+        return false;
+      }
       startSignInVerification(email, name);
       return false;
     }
@@ -696,6 +706,32 @@ var initialized = false;
     });
   }
 
+  /* Small inline warning under the #terms checkbox (redesigned mode only;
+     native mode uses a browser alert instead). */
+  function showTermsWarning(form) {
+    var warning = query('.dc-terms-warning', form);
+    if (!warning) {
+      var terms = query('#terms', form);
+      if (!terms || !terms.parentNode) { return; }
+      warning = el('p', 'dc-terms-warning',
+        'You can\u2019t create an account unless you check this box to agree to the Terms of Service and Privacy Policy.');
+      warning.id = 'dcTermsWarning';
+      warning.setAttribute('role', 'alert');
+      terms.parentNode.appendChild(warning);
+      terms.setAttribute('aria-describedby', 'dcTermsWarning');
+    }
+    warning.classList.add('is-visible');
+  }
+
+  function bindTermsCheckbox(form) {
+    var terms = query('#terms', form);
+    if (!terms) { return; }
+    terms.addEventListener('change', function () {
+      var warning = query('.dc-terms-warning', form);
+      if (terms.checked && warning) { warning.classList.remove('is-visible'); }
+    });
+  }
+
   function initAuthPages() {
     queryAll('#loginForm, #registerForm').forEach(function (form) {
       var isRegister = form.id === 'registerForm';
@@ -703,6 +739,7 @@ var initialized = false;
         event.preventDefault();
         handleAuthForm(form, isRegister);
       });
+      if (isRegister) { bindTermsCheckbox(form); }
     });
 
     initPasswordChecklist();
